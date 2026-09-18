@@ -58,8 +58,10 @@ concurrently in a thread pool; a failing or slow source is caught, logged,
 and contributes zero listings rather than aborting the run.
 
 Every surviving listing is shown, each with its own match percentage - the
-dashboard's slider does the filtering, rather than the pipeline deciding
-in advance what you're allowed to see.
+dashboard's slider does the filtering, rather than the pipeline deciding in
+advance what you're allowed to see. Cards are grouped by the day they
+turned up, each group headed with its date and count ("18 Sept 2026 &middot;
+10 postings"), oldest first so each morning's batch lands at the bottom.
 
 ## Can I actually apply? (eligibility)
 

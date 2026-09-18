@@ -146,6 +146,27 @@
     gap: 1.25rem;
   }
 
+  .day-heading {
+    display: flex;
+    align-items: baseline;
+    gap: 0.75rem;
+    margin: 2rem 0 0.9rem;
+    padding-bottom: 0.5rem;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .day-heading:first-child { margin-top: 0; }
+
+  .day-date {
+    font-size: 0.95rem;
+    font-weight: 700;
+  }
+
+  .day-count {
+    font-size: 0.8rem;
+    color: var(--text-muted);
+  }
+
   .card {
     background: var(--bg-elevated);
     border: 1px solid var(--border);
@@ -411,7 +432,7 @@
         </label>
       </div>
 
-      <div id="cards" class="cards"></div>
+      <div id="cards"></div>
       <p id="empty-state" hidden>No jobs match these filters.</p>
     </div>
   </main>
@@ -613,7 +634,40 @@
       });
 
       document.getElementById("empty-state").hidden = visible.length !== 0;
-      visible.forEach(function (job) { container.appendChild(createCard(job)); });
+
+      // Grouped by the day each listing turned up, oldest group first so the
+      // newest batch is always at the bottom of the page.
+      var byDay = {};
+      visible.forEach(function (job) {
+        var day = (job.first_seen || "").slice(0, 10);
+        (byDay[day] = byDay[day] || []).push(job);
+      });
+
+      Object.keys(byDay).sort().forEach(function (day) {
+        var group = byDay[day];
+
+        var heading = document.createElement("div");
+        heading.className = "day-heading";
+
+        var label = document.createElement("span");
+        label.className = "day-date";
+        // Parsed as local midnight; a bare "YYYY-MM-DD" is treated as UTC and
+        // would render as the previous day west of Greenwich.
+        label.textContent = formatDate(day + "T00:00:00");
+        heading.appendChild(label);
+
+        var count = document.createElement("span");
+        count.className = "day-count";
+        count.textContent = group.length + (group.length === 1 ? " posting" : " postings");
+        heading.appendChild(count);
+
+        container.appendChild(heading);
+
+        var grid = document.createElement("div");
+        grid.className = "cards";
+        group.forEach(function (job) { grid.appendChild(createCard(job)); });
+        container.appendChild(grid);
+      });
     }
 
     document.getElementById("min-match").addEventListener("input", function (e) {
