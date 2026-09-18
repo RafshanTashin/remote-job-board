@@ -1,0 +1,5 @@
+[tool.pytest.ini_options]
+# Makes `jobboard.*` importable from tests regardless of how pytest is
+# invoked (bare `pytest`, `python -m pytest`, or from an IDE).
+pythonpath = ["."]
+testpaths = ["jobboard/tests"]

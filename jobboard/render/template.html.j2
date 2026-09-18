@@ -1,0 +1,567 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Remote Job Board — Daily Matches</title>
+<meta name="description" content="Remote SEO and marketing listings, scored daily as a percentage match against a candidate profile.">
+<style>
+  :root {
+    --bg: #f7f8fa;
+    --bg-elevated: #ffffff;
+    --text: #1a1d23;
+    --text-muted: #5b6270;
+    --border: #e3e6eb;
+    --accent: #2563eb;
+    --green: #16a34a;
+    --amber: #d97706;
+    --grey: #6b7280;
+    --chip-bg: #eef0f4;
+    --chip-text: #33384a;
+    --chip-missing-bg: #f4f4f5;
+    --chip-missing-text: #a1a1aa;
+    --shadow: 0 1px 2px rgba(16, 24, 40, 0.06), 0 1px 3px rgba(16, 24, 40, 0.08);
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #0f1115;
+      --bg-elevated: #171a21;
+      --text: #e7e9ee;
+      --text-muted: #9aa1ae;
+      --border: #262b34;
+      --accent: #6d94ff;
+      --green: #34d399;
+      --amber: #fbbf24;
+      --grey: #8b93a3;
+      --chip-bg: #1f242e;
+      --chip-text: #cdd2dd;
+      --chip-missing-bg: #171a21;
+      --chip-missing-text: #565d6b;
+      --shadow: 0 1px 2px rgba(0, 0, 0, 0.4), 0 1px 3px rgba(0, 0, 0, 0.5);
+    }
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--text);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    line-height: 1.5;
+  }
+
+  a { color: var(--accent); }
+
+  .wrap {
+    max-width: 1120px;
+    margin: 0 auto;
+    padding: 0 1.25rem;
+  }
+
+  header.dashboard-header {
+    background: var(--bg-elevated);
+    border-bottom: 1px solid var(--border);
+    padding: 1.75rem 0;
+  }
+
+  .title-row {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 0.5rem;
+  }
+
+  .title-row h1 {
+    margin: 0;
+    font-size: 1.5rem;
+  }
+
+  .updated {
+    margin: 0;
+    color: var(--text-muted);
+    font-size: 0.85rem;
+  }
+
+  .stats-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 1.75rem;
+    margin-top: 1.25rem;
+  }
+
+  .stat { display: flex; flex-direction: column; }
+
+  .stat-value {
+    font-size: 1.5rem;
+    font-weight: 700;
+  }
+
+  .stat-label {
+    font-size: 0.78rem;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+  }
+
+  main { padding: 1.75rem 0 3rem; }
+
+  .filters {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 1.5rem;
+    background: var(--bg-elevated);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 1rem 1.25rem;
+    margin-bottom: 1.5rem;
+  }
+
+  .filters label {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 0.85rem;
+    color: var(--text-muted);
+  }
+
+  .filters input[type="range"] { width: 140px; }
+
+  .filters select {
+    background: var(--bg);
+    color: var(--text);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 0.3rem 0.5rem;
+  }
+
+  #min-match-value { color: var(--text); font-weight: 600; min-width: 2.5em; }
+
+  .cards {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    gap: 1.25rem;
+  }
+
+  .card {
+    background: var(--bg-elevated);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 1.1rem 1.2rem;
+    box-shadow: var(--shadow);
+    display: flex;
+    flex-direction: column;
+    gap: 0.85rem;
+  }
+
+  .card-top {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.85rem;
+  }
+
+  .ring {
+    --pct: 0;
+    --ring-color: var(--grey);
+    width: 58px;
+    height: 58px;
+    border-radius: 50%;
+    background: conic-gradient(var(--ring-color) calc(var(--pct) * 3.6deg), var(--border) 0deg);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+    flex-shrink: 0;
+  }
+
+  .ring::before {
+    content: "";
+    position: absolute;
+    inset: 5px;
+    border-radius: 50%;
+    background: var(--bg-elevated);
+  }
+
+  .ring-value {
+    position: relative;
+    z-index: 1;
+    font-weight: 700;
+    font-size: 0.82rem;
+  }
+
+  .ring.green { --ring-color: var(--green); }
+  .ring.amber { --ring-color: var(--amber); }
+  .ring.grey { --ring-color: var(--grey); }
+
+  .card-heading { flex: 1; min-width: 0; }
+
+  .card-heading h3 {
+    margin: 0;
+    font-size: 1.02rem;
+    line-height: 1.3;
+  }
+
+  .card-heading .company {
+    margin: 0.2rem 0 0;
+    color: var(--text-muted);
+    font-size: 0.88rem;
+  }
+
+  .badge-new {
+    background: var(--accent);
+    color: #fff;
+    font-size: 0.68rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    padding: 0.2rem 0.5rem;
+    border-radius: 999px;
+    height: fit-content;
+    flex-shrink: 0;
+  }
+
+  .meta-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.6rem;
+    font-size: 0.8rem;
+    color: var(--text-muted);
+  }
+
+  .source-badge {
+    background: var(--chip-bg);
+    color: var(--chip-text);
+    border-radius: 6px;
+    padding: 0.12rem 0.5rem;
+    text-transform: capitalize;
+  }
+
+  .chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.4rem;
+  }
+
+  .chip {
+    display: inline-flex;
+    padding: 0.22rem 0.6rem;
+    border-radius: 999px;
+    font-size: 0.72rem;
+    background: var(--chip-bg);
+    color: var(--chip-text);
+  }
+
+  .chip.missing {
+    background: var(--chip-missing-bg);
+    color: var(--chip-missing-text);
+  }
+
+  .card-actions {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem;
+    margin-top: auto;
+    padding-top: 0.25rem;
+  }
+
+  .status-select {
+    flex: 1;
+    background: var(--bg);
+    color: var(--text);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 0.4rem 0.5rem;
+    font-size: 0.82rem;
+  }
+
+  .apply-btn {
+    background: var(--accent);
+    color: #fff;
+    text-decoration: none;
+    font-size: 0.82rem;
+    font-weight: 600;
+    padding: 0.45rem 0.9rem;
+    border-radius: 6px;
+    white-space: nowrap;
+  }
+
+  #empty-state {
+    text-align: center;
+    color: var(--text-muted);
+    padding: 3rem 0;
+  }
+
+  .demo-banner {
+    background: var(--chip-bg);
+    color: var(--text);
+    border-bottom: 1px solid var(--border);
+    font-size: 0.82rem;
+    text-align: center;
+    padding: 0.6rem 1rem;
+  }
+
+  .demo-banner a { font-weight: 600; }
+
+  footer.site-footer {
+    border-top: 1px solid var(--border);
+    padding: 1.5rem 0 2.5rem;
+    color: var(--text-muted);
+    font-size: 0.8rem;
+  }
+
+  @media (max-width: 520px) {
+    .filters { flex-direction: column; align-items: stretch; }
+    .filters input[type="range"] { width: 100%; }
+  }
+</style>
+</head>
+<body>
+  {% if is_demo %}
+  <div class="demo-banner">
+    Demo mode &mdash; showing sample listings so you can explore the interface.
+    <a href="https://github.com/RafshanTashin/remote-job-board" target="_blank" rel="noopener noreferrer">View the source</a>
+  </div>
+  {% endif %}
+  <header class="dashboard-header">
+    <div class="wrap">
+      <div class="title-row">
+        <h1>Remote Job Board</h1>
+        <p class="updated">Last updated {{ generated_at }}</p>
+      </div>
+      <div class="stats-row">
+        <div class="stat">
+          <span class="stat-value">{{ jobs_scanned }}</span>
+          <span class="stat-label">Jobs scanned</span>
+        </div>
+        <div class="stat">
+          <span class="stat-value">{{ match_count }}</span>
+          <span class="stat-label">Matches</span>
+        </div>
+        <div class="stat">
+          <span class="stat-value">{{ new_count }}</span>
+          <span class="stat-label">New today</span>
+        </div>
+        <div class="stat">
+          <span class="stat-value">{{ avg_match }}%</span>
+          <span class="stat-label">Avg match</span>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <main>
+    <div class="wrap">
+      <div class="filters">
+        <label>
+          Min match <span id="min-match-value">50%</span>
+          <input type="range" id="min-match" min="0" max="100" step="5" value="50">
+        </label>
+        <label>
+          Source
+          <select id="source-filter">
+            <option value="all">All sources</option>
+            {% for s in sources %}<option value="{{ s }}">{{ s }}</option>{% endfor %}
+          </select>
+        </label>
+        <label>
+          <input type="checkbox" id="new-only">
+          New only
+        </label>
+      </div>
+
+      <div id="cards" class="cards"></div>
+      <p id="empty-state" hidden>No jobs match these filters.</p>
+    </div>
+  </main>
+
+  <footer class="site-footer">
+    <div class="wrap">
+      <p>
+        Generated automatically by
+        <a href="https://github.com/RafshanTashin/remote-job-board" target="_blank" rel="noopener noreferrer">remote-job-board</a>.
+        Sourced from Remotive, RemoteOK, Arbeitnow, Jobicy, and We Work Remotely. Status choices are stored only in your browser.
+      </p>
+    </div>
+  </footer>
+
+  <script id="jobs-data" type="application/json">{{ jobs_json | safe }}</script>
+  <script>
+  (function () {
+    "use strict";
+
+    var STORAGE_PREFIX = "jobboard:status:";
+    var jobs = JSON.parse(document.getElementById("jobs-data").textContent);
+
+    function tierClass(score) {
+      if (score >= 80) return "green";
+      if (score >= 60) return "amber";
+      return "grey";
+    }
+
+    function formatDate(isoString) {
+      var parsed = new Date(isoString);
+      if (isNaN(parsed.getTime())) return isoString;
+      return parsed.toLocaleDateString(undefined, { year: "numeric", month: "short", day: "numeric" });
+    }
+
+    function getStatus(id) {
+      try {
+        return localStorage.getItem(STORAGE_PREFIX + id) || "";
+      } catch (e) {
+        return "";
+      }
+    }
+
+    function setStatus(id, value) {
+      try {
+        if (value) {
+          localStorage.setItem(STORAGE_PREFIX + id, value);
+        } else {
+          localStorage.removeItem(STORAGE_PREFIX + id);
+        }
+      } catch (e) {
+        /* localStorage unavailable (private mode, storage full, etc.) - status just won't persist */
+      }
+    }
+
+    function safeUrl(url) {
+      return /^https?:\/\//i.test(url || "") ? url : "#";
+    }
+
+    function createChip(text, matched) {
+      var span = document.createElement("span");
+      span.className = matched ? "chip" : "chip missing";
+      span.textContent = text;
+      return span;
+    }
+
+    function createCard(job) {
+      var article = document.createElement("article");
+      article.className = "card";
+
+      var top = document.createElement("div");
+      top.className = "card-top";
+
+      var ring = document.createElement("div");
+      ring.className = "ring " + tierClass(job.match_score);
+      ring.style.setProperty("--pct", job.match_score);
+      var ringValue = document.createElement("span");
+      ringValue.className = "ring-value";
+      ringValue.textContent = Math.round(job.match_score) + "%";
+      ring.appendChild(ringValue);
+      top.appendChild(ring);
+
+      var heading = document.createElement("div");
+      heading.className = "card-heading";
+      var h3 = document.createElement("h3");
+      h3.textContent = job.title;
+      var company = document.createElement("p");
+      company.className = "company";
+      company.textContent = job.company;
+      heading.appendChild(h3);
+      heading.appendChild(company);
+      top.appendChild(heading);
+
+      if (job.is_new) {
+        var badge = document.createElement("span");
+        badge.className = "badge-new";
+        badge.textContent = "New";
+        top.appendChild(badge);
+      }
+      article.appendChild(top);
+
+      var meta = document.createElement("div");
+      meta.className = "meta-row";
+      var sourceBadge = document.createElement("span");
+      sourceBadge.className = "source-badge";
+      sourceBadge.textContent = job.source;
+      meta.appendChild(sourceBadge);
+      var location = document.createElement("span");
+      location.textContent = job.location;
+      meta.appendChild(location);
+      if (job.posted_at) {
+        var posted = document.createElement("span");
+        posted.textContent = "Posted " + formatDate(job.posted_at);
+        meta.appendChild(posted);
+      }
+      article.appendChild(meta);
+
+      var chips = document.createElement("div");
+      chips.className = "chips";
+      job.matched_keywords.forEach(function (k) { chips.appendChild(createChip(k, true)); });
+      job.missing_keywords.forEach(function (k) { chips.appendChild(createChip(k, false)); });
+      article.appendChild(chips);
+
+      var actions = document.createElement("div");
+      actions.className = "card-actions";
+
+      var select = document.createElement("select");
+      select.className = "status-select";
+      select.setAttribute("aria-label", "Application status for " + job.title);
+      [
+        ["", "Set status…"],
+        ["interested", "Interested"],
+        ["applied", "Applied"],
+        ["rejected", "Rejected"]
+      ].forEach(function (pair) {
+        var opt = document.createElement("option");
+        opt.value = pair[0];
+        opt.textContent = pair[1];
+        select.appendChild(opt);
+      });
+      select.value = getStatus(job.id);
+      select.addEventListener("change", function () { setStatus(job.id, select.value); });
+      actions.appendChild(select);
+
+      var apply = document.createElement("a");
+      apply.className = "apply-btn";
+      apply.href = safeUrl(job.url);
+      apply.target = "_blank";
+      apply.rel = "noopener noreferrer";
+      apply.textContent = "Apply";
+      actions.appendChild(apply);
+
+      article.appendChild(actions);
+      return article;
+    }
+
+    function currentFilters() {
+      return {
+        minMatch: Number(document.getElementById("min-match").value),
+        source: document.getElementById("source-filter").value,
+        newOnly: document.getElementById("new-only").checked
+      };
+    }
+
+    function renderCards() {
+      var filters = currentFilters();
+      var container = document.getElementById("cards");
+      container.innerHTML = "";
+
+      var visible = jobs.filter(function (job) {
+        if (job.match_score < filters.minMatch) return false;
+        if (filters.source !== "all" && job.source !== filters.source) return false;
+        if (filters.newOnly && !job.is_new) return false;
+        return true;
+      });
+
+      document.getElementById("empty-state").hidden = visible.length !== 0;
+      visible.forEach(function (job) { container.appendChild(createCard(job)); });
+    }
+
+    document.getElementById("min-match").addEventListener("input", function (e) {
+      document.getElementById("min-match-value").textContent = e.target.value + "%";
+      renderCards();
+    });
+    document.getElementById("source-filter").addEventListener("change", renderCards);
+    document.getElementById("new-only").addEventListener("change", renderCards);
+
+    renderCards();
+  })();
+  </script>
+</body>
+</html>

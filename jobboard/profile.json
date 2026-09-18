@@ -1,0 +1,92 @@
+{
+  "target_titles": [
+    "SEO Specialist",
+    "SEO Manager",
+    "Digital Marketing Specialist",
+    "Growth Marketer",
+    "Content Marketing Manager",
+    "Marketing Analyst"
+  ],
+  "skills": [
+    { "name": "technical seo", "weight": 5 },
+    { "name": "google analytics 4", "weight": 4 },
+    { "name": "google search console", "weight": 4 },
+    { "name": "content strategy", "weight": 4 },
+    { "name": "on-page seo", "weight": 4 },
+    { "name": "keyword research", "weight": 4 },
+    { "name": "hubspot", "weight": 3 },
+    { "name": "google ads", "weight": 3 },
+    { "name": "b2b saas", "weight": 4 },
+    { "name": "link building", "weight": 3 },
+    { "name": "internal linking", "weight": 3 },
+    { "name": "cro", "weight": 3 }
+  ],
+  "seniority": {
+    "level": "mid",
+    "min_years": 2,
+    "max_years": 4
+  },
+  "geo_hard_exclude_phrases": [
+    "must reside in",
+    "must be located in",
+    "must be based in the united states",
+    "must be based in the uk",
+    "must be based in the eu",
+    "us work authorization",
+    "u.s. work authorization",
+    "united states work authorization",
+    "eu work authorization",
+    "european union work authorization",
+    "uk work authorization",
+    "united kingdom work authorization",
+    "authorized to work in the united states",
+    "authorized to work in the uk",
+    "authorized to work in the eu",
+    "must be authorized to work in",
+    "us citizens only",
+    "u.s. citizens only",
+    "eu citizens only",
+    "uk citizens only",
+    "citizens only",
+    "no visa sponsorship",
+    "sponsorship is not available",
+    "we do not sponsor",
+    "must be a us citizen",
+    "must be a uk citizen",
+    "must be eligible to work in"
+  ],
+  "geo_soft_penalty_phrases": [
+    "overlap with est",
+    "overlap with pst",
+    "overlap with cst",
+    "us business hours",
+    "us timezone",
+    "eu timezone",
+    "uk timezone",
+    "within the united states",
+    "within the uk",
+    "within the eu",
+    "us-based",
+    "uk-based",
+    "eu-based"
+  ],
+  "seniority_overqualified_terms": [
+    "senior",
+    "sr",
+    "staff",
+    "principal",
+    "director",
+    "head of",
+    "vice president",
+    "chief marketing officer",
+    "cmo"
+  ],
+  "seniority_underqualified_terms": [
+    "internship",
+    "intern",
+    "entry level",
+    "entry-level",
+    "junior",
+    "jr"
+  ]
+}
