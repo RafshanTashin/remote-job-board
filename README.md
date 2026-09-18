@@ -172,7 +172,7 @@ python jobboard/main.py --db-path /path/to/jobs.db --output-path /path/to/index.
 pytest
 ```
 
-28 tests cover role-first scoring (role families, title-vs-body weighting,
+32 tests cover role-first scoring (role families, title-vs-body weighting,
 penalties, clamping), country eligibility (including Himalayas' structured
 restrictions and the timezone check), role exclusion, and dedupe/hashing -
 against a small fixture profile and sample listings

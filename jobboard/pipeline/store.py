@@ -156,12 +156,22 @@ def query_matches(
     min_score: float,
     now: datetime,
     new_within_hours: int = 24,
+    seen_within_hours: int = 72,
 ) -> list[StoredJob]:
-    """Return jobs at or above ``min_score``, sorted by match percentage descending."""
+    """Return currently-live jobs at or above ``min_score``, best match first.
+
+    The table keeps every listing ever seen so ``first_seen`` stays
+    meaningful, but a listing that stopped appearing in the feeds is closed
+    or filled - showing it would pad the dashboard with dead links. The
+    window is a few days rather than this run alone so one failing source
+    doesn't blank the page.
+    """
     cutoff = now - timedelta(hours=new_within_hours)
+    seen_cutoff = (now - timedelta(hours=seen_within_hours)).isoformat()
     rows = conn.execute(
-        "SELECT * FROM jobs WHERE match_score >= ? ORDER BY match_score DESC, last_seen DESC",
-        (min_score,),
+        "SELECT * FROM jobs WHERE match_score >= ? AND last_seen >= ? "
+        "ORDER BY match_score DESC, last_seen DESC",
+        (min_score, seen_cutoff),
     ).fetchall()
 
     results: list[StoredJob] = []
