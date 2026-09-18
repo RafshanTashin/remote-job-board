@@ -46,6 +46,7 @@ def profile() -> Profile:
         geo_soft_penalty_phrases=["us timezone"],
         geo_hard_exclude_phrases=["must reside in", "us work authorization"],
         excluded_title_terms=["intern", "engineer", "developer", "frontend", "backend"],
+        max_posting_age_days=45,
         eligibility={
             "country": "Bangladesh",
             "timezone_offset": 6,

@@ -99,6 +99,7 @@ class Profile:
     geo_soft_penalty_phrases: list[str]
     geo_hard_exclude_phrases: list[str]
     excluded_title_terms: list[str]
+    max_posting_age_days: int
     eligibility: dict
 
     @classmethod
@@ -124,6 +125,7 @@ class Profile:
             geo_soft_penalty_phrases=[_fold(p) for p in data.get("geo_soft_penalty_phrases", [])],
             geo_hard_exclude_phrases=[p.lower() for p in data.get("geo_hard_exclude_phrases", [])],
             excluded_title_terms=[_fold(t) for t in data.get("excluded_title_terms", [])],
+            max_posting_age_days=int(data.get("max_posting_age_days", 60)),
             eligibility=data.get("eligibility", {}),
         )
 

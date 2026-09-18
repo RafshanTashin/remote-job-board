@@ -20,10 +20,10 @@ API_URL = "https://himalayas.app/jobs/api"
 PAGE_LIMIT = 100
 
 
-def _posted_at(pub_date: int | None) -> str | None:
-    if not pub_date:
+def _from_unix(value: int | None) -> str | None:
+    if not value:
         return None
-    return datetime.fromtimestamp(pub_date, tz=timezone.utc).isoformat()
+    return datetime.fromtimestamp(value, tz=timezone.utc).isoformat()
 
 
 class HimalayasSource(SourceAdapter):
@@ -57,7 +57,8 @@ class HimalayasSource(SourceAdapter):
                     url=item.get("applicationLink", ""),
                     description=strip_html(description),
                     tags=tags,
-                    posted_at=_posted_at(item.get("pubDate")),
+                    posted_at=_from_unix(item.get("pubDate")),
+                    expires_at=_from_unix(item.get("expiryDate")),
                 )
             )
         return jobs

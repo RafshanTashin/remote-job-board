@@ -64,7 +64,7 @@ in advance what you're allowed to see.
 ## Can I actually apply? (eligibility)
 
 Most "remote" listings are remote *within a region*. In one real run, 470
-listings came back and **260 were locked** to the US, EU, UK or LATAM.
+listings came back and **170 were locked** to the US, EU, UK or LATAM.
 Scoring them would be wasted effort, so `pipeline/eligibility.py` classifies
 every listing before it reaches the scorer:
 
@@ -172,11 +172,12 @@ python jobboard/main.py --db-path /path/to/jobs.db --output-path /path/to/index.
 pytest
 ```
 
-32 tests cover role-first scoring (role families, title-vs-body weighting,
+47 tests cover role-first scoring (role families, title-vs-body weighting,
 penalties, clamping), country eligibility (including Himalayas' structured
-restrictions and the timezone check), role exclusion, and dedupe/hashing -
-against a small fixture profile and sample listings
-(`jobboard/tests/conftest.py`).
+restrictions and the timezone check), role exclusion, closing-date and
+staleness handling across every date format the sources emit, storage and
+the live-listing window, and dedupe/hashing - against a small fixture
+profile and sample listings (`jobboard/tests/conftest.py`).
 
 ## Automation
 
@@ -203,11 +204,18 @@ which is exactly what stays out of this public repo):
 | 72% | Growth Marketing | Growth Marketer | Cascade Metrics | unconfirmed |
 | 62% | Marketing | Marketing Specialist | Brightloop | unconfirmed |
 
-That run scanned **470 listings**: engineering and internship titles were
-dropped outright, **260 were region-locked** and dropped, leaving ~190
-the candidate can actually apply to - of which 7 scored above 50%. A short
-list is the expected outcome, and the point: 7 real options beats scrolling
-470 dead ends.
+One real run scanned **470 listings** and narrowed them like this:
+
+| Stage | Dropped | Left |
+|---|---:|---:|
+| Fetched from six sources | - | 470 |
+| Closed or older than 45 days | 32 | 438 |
+| Engineering / internship titles | 172 | 266 |
+| Region-locked (US/EU/UK/LATAM only) | 170 | 93 |
+| **Shown on the dashboard** | | **93** |
+
+Of those 93, six scored above 50%. A short list is the expected outcome,
+and the point: six real options beats scrolling 470 dead ends.
 
 ## Project structure
 

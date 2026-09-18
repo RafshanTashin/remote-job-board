@@ -35,6 +35,9 @@ class NormalizedJob:
     description: str
     tags: list[str] = field(default_factory=list)
     posted_at: str | None = None
+    # Only some sources publish an explicit closing date; where they do, it
+    # beats guessing staleness from posted_at.
+    expires_at: str | None = None
 
 
 class SourceAdapter(ABC):

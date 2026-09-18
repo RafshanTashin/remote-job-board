@@ -5,12 +5,74 @@ from __future__ import annotations
 import hashlib
 import logging
 import re
+from datetime import datetime, timedelta, timezone
+from email.utils import parsedate_to_datetime
 
 from jobboard.sources.base import NormalizedJob
 
 logger = logging.getLogger(__name__)
 
 _WHITESPACE_RE = re.compile(r"\s+")
+
+
+def parse_date(value: str | None) -> datetime | None:
+    """Parse a posting date from any of the formats these sources emit.
+
+    JSON APIs give ISO 8601 (sometimes with 'Z', sometimes with an offset,
+    sometimes naive); RSS feeds give RFC 2822. Anything unrecognized is
+    treated as unknown rather than as an error, since a missing date should
+    never drop an otherwise good listing.
+    """
+    if not value:
+        return None
+
+    text = value.strip()
+    try:
+        parsed = datetime.fromisoformat(text.replace("Z", "+00:00"))
+        return parsed if parsed.tzinfo else parsed.replace(tzinfo=timezone.utc)
+    except ValueError:
+        pass
+
+    try:
+        parsed = parsedate_to_datetime(text)
+        return parsed if parsed.tzinfo else parsed.replace(tzinfo=timezone.utc)
+    except (TypeError, ValueError):
+        return None
+
+
+def drop_expired(jobs: list[NormalizedJob], max_age_days: int, now: datetime) -> list[NormalizedJob]:
+    """Drop listings that have closed, or are too old to still be open.
+
+    A source's own closing date is authoritative where it publishes one.
+    Otherwise age stands in for it: a months-old posting is nearly always
+    filled, and applying to it wastes the candidate's time.
+    """
+    oldest_acceptable = now - timedelta(days=max_age_days)
+    kept: list[NormalizedJob] = []
+    expired = 0
+    stale = 0
+
+    for job in jobs:
+        expires = parse_date(job.expires_at)
+        if expires is not None:
+            # The source says when this closes, so age is irrelevant - a
+            # long-running posting it still lists is still open.
+            if expires < now:
+                expired += 1
+                continue
+            kept.append(job)
+            continue
+
+        posted = parse_date(job.posted_at)
+        if posted is not None and posted < oldest_acceptable:
+            stale += 1
+            continue
+
+        kept.append(job)
+
+    if expired or stale:
+        logger.info("dropped %d closed and %d stale listing(s)", expired, stale)
+    return kept
 
 
 def normalize_location(location: str) -> str:

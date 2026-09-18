@@ -23,7 +23,7 @@ from datetime import datetime, timedelta, timezone
 from jobboard.fixtures.sample_jobs import SAMPLE_JOBS
 from jobboard.pipeline.eligibility import filter_eligible
 from jobboard.pipeline.fetch import fetch_all
-from jobboard.pipeline.normalize import dedupe_scored, drop_excluded_roles
+from jobboard.pipeline.normalize import dedupe_scored, drop_excluded_roles, drop_expired
 from jobboard.pipeline.score import Profile, get_scorer
 from jobboard.pipeline.store import init_db, query_matches, upsert_job
 from jobboard.render.build import build_dashboard
@@ -87,7 +87,8 @@ def run(
         collected = all_jobs
         first_seen_by_id = None
 
-    in_scope = drop_excluded_roles(collected, profile.excluded_title_terms)
+    still_open = drop_expired(collected, profile.max_posting_age_days, started)
+    in_scope = drop_excluded_roles(still_open, profile.excluded_title_terms)
 
     eligible = filter_eligible(
         in_scope,

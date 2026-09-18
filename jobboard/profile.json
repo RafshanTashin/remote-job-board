@@ -131,6 +131,9 @@
 
   "skill_target_weight": 26,
 
+  "_max_posting_age_days_comment": "Listings older than this are treated as filled. Sources that publish their own closing date are trusted over this.",
+  "max_posting_age_days": 45,
+
   "_excluded_title_terms_comment": "Titles dropped outright, never scored or shown: internships and software-engineering roles.",
   "excluded_title_terms": [
     "intern", "internship", "student", "trainee", "apprentice",
