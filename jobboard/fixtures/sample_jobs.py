@@ -3,8 +3,14 @@
 Every company name here is fictional. They're scored by exactly the same
 engine that scores live listings - only the input is canned.
 
+These deliberately mirror the *shape* of real postings: generic one-word
+tags, skills mentioned only in prose, and a realistic mix of region-locked
+and open locations. An earlier version gave every sample a tidy tag array
+naming each profile skill, which flattered the scorer and hid the fact that
+real listings scored near zero.
+
 Each entry pairs a job with how many hours ago it was "first seen", so the
-demo dashboard has a realistic mix of new and established listings.
+demo has a realistic mix of new and established listings.
 """
 
 from __future__ import annotations
@@ -14,86 +20,61 @@ from jobboard.sources.base import NormalizedJob
 SAMPLE_JOBS: list[tuple[NormalizedJob, int]] = [
     (
         NormalizedJob(
-            source="remotive",
+            source="weworkremotely",
             external_id="demo-1",
-            title="SEO Specialist - Technical SEO & Keyword Research",
+            title="SEO Specialist",
             company="Northwind Analytics",
-            location="Remote - Worldwide",
+            location="Anywhere",
             url="https://example.com/demo/northwind-seo-specialist",
             description=(
-                "Northwind Analytics is a B2B SaaS platform for supply-chain teams. "
-                "You'll own technical SEO audits, on-page SEO improvements, and keyword "
-                "research to grow organic pipeline. Day to day you will work in Google "
-                "Analytics 4 and Google Search Console, coordinate internal linking across "
-                "the docs and blog, and partner with content on the editorial calendar."
+                "Northwind Analytics is a B2B SaaS platform for supply-chain teams. You'll own "
+                "technical SEO for the marketing site and docs: audits, on-page fixes, and the "
+                "keyword research that decides what we publish next. Day to day you'll live in "
+                "Google Analytics 4 and Google Search Console, watch organic traffic against "
+                "the content strategy, and work with writers on internal linking across the blog."
             ),
-            tags=[
-                "technical seo",
-                "on-page seo",
-                "keyword research",
-                "google analytics 4",
-                "google search console",
-                "b2b saas",
-                "internal linking",
-                "content strategy",
-                "link building",
-            ],
+            tags=["seo", "marketing"],
             posted_at="2026-09-15T09:00:00Z",
         ),
         2,
     ),
     (
         NormalizedJob(
-            source="jobicy",
+            source="himalayas",
             external_id="demo-2",
-            title="SEO Manager - B2B SaaS",
+            title="Digital Marketing Manager",
             company="Fernwood Digital",
-            location="Remote (Anywhere)",
-            url="https://example.com/demo/fernwood-seo-manager",
+            location="Worldwide",
+            url="https://example.com/demo/fernwood-digital-marketing-manager",
             description=(
-                "Fernwood Digital helps mid-market B2B SaaS companies grow organic revenue. "
-                "As SEO Manager you'll set the technical SEO roadmap, run keyword research "
-                "for new content clusters, lead link building outreach, and track pipeline "
-                "in HubSpot alongside our content strategy lead."
+                "Fernwood helps mid-market SaaS companies grow organic revenue. You'll run the "
+                "content calendar end to end, brief writers, manage our Google Ads spend against "
+                "the same keyword set, and report on the funnel monthly. Comfortable with "
+                "landing page testing and email marketing."
             ),
-            tags=[
-                "technical seo",
-                "content strategy",
-                "keyword research",
-                "link building",
-                "hubspot",
-                "on-page seo",
-                "internal linking",
-            ],
+            tags=["marketing"],
             posted_at="2026-09-16T09:00:00Z",
         ),
         18,
     ),
     (
         NormalizedJob(
-            source="arbeitnow",
+            source="workingnomads",
             external_id="demo-3",
-            title="Digital Marketing Specialist",
-            company="Brightloop",
-            location="Remote",
-            url="https://example.com/demo/brightloop-digital-marketing",
+            title="Content Marketing Manager",
+            company="Lumen Stack",
+            location="Global",
+            url="https://example.com/demo/lumen-content-marketing-manager",
             description=(
-                "Brightloop is a B2B SaaS billing platform. You'll run Google Ads campaigns, "
-                "manage HubSpot lifecycle workflows, and support content strategy for our "
-                "product blog, including light keyword research and on-page SEO for landing pages."
+                "Own content strategy for a developer-tools company: editorial calendar, "
+                "commissioning, and the on-page SEO that makes the work findable. You'll "
+                "partner with our search lead on keyword research and report on organic "
+                "traffic to the blog."
             ),
-            tags=[
-                "google ads",
-                "hubspot",
-                "content strategy",
-                "keyword research",
-                "on-page seo",
-                "link building",
-                "internal linking",
-            ],
-            posted_at="2026-09-14T09:00:00Z",
+            tags=["content", "b2b"],
+            posted_at="2026-09-16T09:00:00Z",
         ),
-        60,
+        6,
     ),
     (
         NormalizedJob(
@@ -104,84 +85,80 @@ SAMPLE_JOBS: list[tuple[NormalizedJob, int]] = [
             location="Remote",
             url="https://example.com/demo/cascade-growth-marketer",
             description=(
-                "Cascade Metrics is looking for a Growth Marketer to run CRO experiments "
-                "across the signup funnel, build growth loops, and report on acquisition in "
-                "Google Analytics 4. B2B SaaS experience preferred."
+                "Run acquisition experiments across the signup funnel and report on conversion "
+                "in Google Analytics. You'll own paid search alongside lifecycle email, and "
+                "work closely with product on activation."
             ),
-            tags=["cro", "google analytics 4", "growth"],
+            tags=["growth"],
             posted_at="2026-09-13T09:00:00Z",
         ),
-        72,
+        30,
     ),
     (
         NormalizedJob(
-            source="weworkremotely",
+            source="remotive",
             external_id="demo-5",
-            title="Content Marketing Manager",
-            company="Lumen Stack",
+            title="Marketing Specialist",
+            company="Brightloop",
             location="Remote",
-            url="https://example.com/demo/lumen-content-marketing-manager",
+            url="https://example.com/demo/brightloop-marketing-specialist",
             description=(
-                "Lumen Stack needs a Content Marketing Manager to own content strategy, "
-                "on-page SEO, and internal linking for our developer blog and docs site. "
-                "You'll partner with the SEO team on keyword research for our B2B SaaS audience."
+                "Brightloop is a billing platform for B2B teams. You'll support campaign "
+                "execution across channels, keep the blog publishing on schedule, and help "
+                "with brand awareness work at trade events."
             ),
-            tags=[
-                "content strategy",
-                "on-page seo",
-                "internal linking",
-                "keyword research",
-                "b2b saas",
-                "link building",
-                "hubspot",
-            ],
-            posted_at="2026-09-16T09:00:00Z",
+            tags=["marketing"],
+            posted_at="2026-09-14T09:00:00Z",
         ),
-        6,
+        54,
     ),
     (
         NormalizedJob(
             source="jobicy",
             external_id="demo-6",
-            title="Marketing Analyst",
-            company="Driftwell",
-            location="Remote (US or EU hours)",
-            url="https://example.com/demo/driftwell-marketing-analyst",
+            title="SEO Manager",
+            company="Halberd Group",
+            location="United States",
+            url="https://example.com/demo/halberd-seo-manager",
             description=(
-                "Driftwell is hiring a Marketing Analyst to build dashboards in Google "
-                "Analytics 4 and support the marketing team with weekly reporting."
+                "Lead technical SEO and content strategy for a portfolio of brands. "
+                "Applicants must reside in the United States and be authorized to work "
+                "in the United States."
             ),
-            tags=["google analytics 4", "reporting"],
-            posted_at="2026-09-12T09:00:00Z",
+            tags=["seo"],
+            posted_at="2026-09-16T09:00:00Z",
         ),
-        96,
-    ),
-    (
-        NormalizedJob(
-            source="remotive",
-            external_id="demo-7",
-            title="SEO Content Writer",
-            company="Parchment Labs",
-            location="Remote - Worldwide",
-            url="https://example.com/demo/parchment-seo-content-writer",
-            description="Write on-page SEO optimized content for a B2B SaaS audience.",
-            tags=["on-page seo", "content strategy"],
-            posted_at="2026-09-11T09:00:00Z",
-        ),
-        120,
+        4,
     ),
     (
         NormalizedJob(
             source="remoteok",
-            external_id="demo-8",
+            external_id="demo-7",
             title="Backend Engineer",
             company="Ironclad Systems",
-            location="Remote",
+            location="Anywhere",
             url="https://example.com/demo/ironclad-backend-engineer",
-            description="Build backend services in Go and Kubernetes for our payments platform.",
+            description=(
+                "Build Go services and Kubernetes tooling for our payments platform. You'll "
+                "also instrument the sales funnel data pipeline and campaign reporting tables."
+            ),
             tags=["golang", "kubernetes"],
             posted_at="2026-09-16T09:00:00Z",
         ),
         3,
+    ),
+    (
+        NormalizedJob(
+            source="jobicy",
+            external_id="demo-8",
+            title="Marketing Intern",
+            company="Parchment Labs",
+            location="Worldwide",
+            url="https://example.com/demo/parchment-marketing-intern",
+            description="Support the marketing team with social scheduling and blog formatting.",
+            tags=["marketing"],
+            posted_at="2026-09-11T09:00:00Z",
+        ),
+        72,
     ),
 ]

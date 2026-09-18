@@ -27,10 +27,20 @@ CREATE TABLE IF NOT EXISTS jobs (
     match_score REAL NOT NULL,
     matched_keywords TEXT NOT NULL,
     missing_keywords TEXT NOT NULL,
+    role_match TEXT,
+    eligibility TEXT NOT NULL DEFAULT 'unconfirmed',
+    eligibility_reason TEXT,
     first_seen TEXT NOT NULL,
     last_seen TEXT NOT NULL
 );
 """
+
+
+ADDED_COLUMNS = {
+    "role_match": "TEXT",
+    "eligibility": "TEXT NOT NULL DEFAULT 'unconfirmed'",
+    "eligibility_reason": "TEXT",
+}
 
 
 def init_db(path: str | Path) -> sqlite3.Connection:
@@ -38,11 +48,26 @@ def init_db(path: str | Path) -> sqlite3.Connection:
     conn = sqlite3.connect(path)
     conn.row_factory = sqlite3.Row
     conn.execute(SCHEMA)
+
+    # A database written before these columns existed keeps its rows (and
+    # their first_seen history) rather than being rebuilt from scratch.
+    existing = {row["name"] for row in conn.execute("PRAGMA table_info(jobs)")}
+    for column, definition in ADDED_COLUMNS.items():
+        if column not in existing:
+            conn.execute(f"ALTER TABLE jobs ADD COLUMN {column} {definition}")
+
     conn.commit()
     return conn
 
 
-def upsert_job(conn: sqlite3.Connection, job: NormalizedJob, score: ScoreResult, now: datetime) -> str:
+def upsert_job(
+    conn: sqlite3.Connection,
+    job: NormalizedJob,
+    score: ScoreResult,
+    now: datetime,
+    eligibility: str = "unconfirmed",
+    eligibility_reason: str | None = None,
+) -> str:
     """Insert a new job (first_seen=now) or refresh an existing one (last_seen=now).
 
     Returns the job's stable id (the dedupe hash).
@@ -57,10 +82,10 @@ def upsert_job(conn: sqlite3.Connection, job: NormalizedJob, score: ScoreResult,
         INSERT INTO jobs (
             id, source, external_id, title, company, location, url, description,
             tags, posted_at, match_score, matched_keywords, missing_keywords,
-            first_seen, last_seen
+            role_match, eligibility, eligibility_reason, first_seen, last_seen
         ) VALUES (:id, :source, :external_id, :title, :company, :location, :url, :description,
                   :tags, :posted_at, :match_score, :matched_keywords, :missing_keywords,
-                  :first_seen, :last_seen)
+                  :role_match, :eligibility, :eligibility_reason, :first_seen, :last_seen)
         ON CONFLICT(id) DO UPDATE SET
             source = excluded.source,
             external_id = excluded.external_id,
@@ -74,6 +99,9 @@ def upsert_job(conn: sqlite3.Connection, job: NormalizedJob, score: ScoreResult,
             match_score = excluded.match_score,
             matched_keywords = excluded.matched_keywords,
             missing_keywords = excluded.missing_keywords,
+            role_match = excluded.role_match,
+            eligibility = excluded.eligibility,
+            eligibility_reason = excluded.eligibility_reason,
             last_seen = excluded.last_seen
         """,
         {
@@ -90,6 +118,9 @@ def upsert_job(conn: sqlite3.Connection, job: NormalizedJob, score: ScoreResult,
             "match_score": score.percentage,
             "matched_keywords": json.dumps(score.matched_keywords),
             "missing_keywords": json.dumps(score.missing_keywords),
+            "role_match": score.role_match,
+            "eligibility": eligibility,
+            "eligibility_reason": eligibility_reason,
             "first_seen": first_seen,
             "last_seen": now_iso,
         },
@@ -112,6 +143,9 @@ class StoredJob:
     match_score: float
     matched_keywords: list[str]
     missing_keywords: list[str]
+    role_match: str | None
+    eligibility: str
+    eligibility_reason: str | None
     first_seen: str
     last_seen: str
     is_new: bool
@@ -146,6 +180,9 @@ def query_matches(
                 match_score=row["match_score"],
                 matched_keywords=json.loads(row["matched_keywords"]),
                 missing_keywords=json.loads(row["missing_keywords"]),
+                role_match=row["role_match"],
+                eligibility=row["eligibility"] or "unconfirmed",
+                eligibility_reason=row["eligibility_reason"],
                 first_seen=row["first_seen"],
                 last_seen=row["last_seen"],
                 is_new=first_seen_dt >= cutoff,

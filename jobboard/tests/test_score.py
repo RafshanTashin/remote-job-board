@@ -1,78 +1,77 @@
-"""Tests for the deterministic keyword scorer in jobboard.pipeline.score."""
+"""Tests for role-first scoring in jobboard.pipeline.score."""
 
 from __future__ import annotations
 
 from dataclasses import replace
 
-from jobboard.pipeline.score import KeywordScorer
+from jobboard.pipeline.score import ProfileScorer
 
 
-def test_strong_match_scores_high_with_no_missing_keywords(profile, perfect_match_job):
-    result = KeywordScorer().score(perfect_match_job, profile)
-    assert result.percentage >= 90
-    assert set(result.matched_keywords) == {s.name for s in profile.skills}
-    assert result.missing_keywords == []
+def test_exact_target_role_scores_high(profile, seo_job):
+    result = ProfileScorer().score(seo_job, profile)
+    assert result.percentage >= 80
+    assert result.role_match == "SEO"
 
 
-def test_no_match_scores_zero(profile, no_match_job):
-    result = KeywordScorer().score(no_match_job, profile)
-    assert result.percentage == 0
-    assert result.matched_keywords == []
-    assert set(result.missing_keywords) == {s.name for s in profile.skills}
+def test_adjacent_marketing_role_is_applicable_but_ranks_lower(profile, seo_job, adjacent_marketing_job):
+    exact = ProfileScorer().score(seo_job, profile)
+    adjacent = ProfileScorer().score(adjacent_marketing_job, profile)
+
+    assert adjacent.role_match == "Marketing"
+    # Still worth surfacing, just behind the specialist role.
+    assert 40 <= adjacent.percentage < exact.percentage
 
 
-def test_geo_hard_phrase_reduces_score(profile, geo_excluded_job):
-    result = KeywordScorer().score(geo_excluded_job, profile)
-    clean_job = replace(
-        geo_excluded_job,
-        description="Strong technical seo and keyword research skills.",
+def test_unrelated_role_scores_near_zero_despite_domain_words(profile, unrelated_job):
+    """'campaign' and 'funnel' in an engineering JD must not fake a match."""
+    result = ProfileScorer().score(unrelated_job, profile)
+    assert result.role_match is None
+    assert result.percentage < 10
+
+
+def test_role_in_title_outranks_role_only_in_description(profile, seo_job):
+    body_only = replace(
+        seo_job,
+        title="Specialist, Digital Experience",
+        description="You will act as our seo specialist across the marketing team.",
     )
-    clean_result = KeywordScorer().score(clean_job, profile)
-
-    assert any("must reside in" in penalty for penalty in result.penalties)
-    assert result.percentage < clean_result.percentage
+    assert ProfileScorer().score(seo_job, profile).percentage > ProfileScorer().score(body_only, profile).percentage
 
 
-def test_seniority_mismatch_reduces_score(profile, senior_mismatch_job):
-    result = KeywordScorer().score(senior_mismatch_job, profile)
-    assert any("senior" in penalty for penalty in result.penalties)
-    assert result.percentage < 50
+def test_leadership_titles_are_penalized(profile, seo_job):
+    director = replace(seo_job, title="Director of SEO")
+    result = ProfileScorer().score(director, profile)
+    assert any("director" in p for p in result.penalties)
+    assert result.percentage < ProfileScorer().score(seo_job, profile).percentage
 
 
-def test_score_never_exceeds_100_even_with_redundant_matches(profile):
-    every_field_job_kwargs = dict(
-        source="remotive",
-        external_id="5",
-        company="Acme SaaS",
-        location="Remote",
-        url="https://example.com/jobs/5",
-        posted_at="2026-09-17T00:00:00Z",
-    )
-    from jobboard.sources.base import NormalizedJob
+def test_junior_titles_are_penalized(profile, seo_job):
+    """5+ years of experience means a student/intern posting is a mismatch."""
+    intern = replace(seo_job, title="Marketing Student Assistant")
+    result = ProfileScorer().score(intern, profile)
+    assert any("student" in p for p in result.penalties)
 
-    saturated_job = NormalizedJob(
-        title="Technical SEO Google Analytics 4 Keyword Research HubSpot Link Building",
-        description="technical seo google analytics 4 keyword research hubspot link building",
+
+def test_excessive_experience_ask_is_penalized(profile, seo_job):
+    senior = replace(seo_job, description=seo_job.description + " Requires 12 years of experience.")
+    result = ProfileScorer().score(senior, profile)
+    assert any("12+ years" in p for p in result.penalties)
+
+
+def test_score_is_clamped_between_0_and_100(profile, seo_job, unrelated_job):
+    saturated = replace(
+        seo_job,
+        title="SEO Specialist and Digital Marketing Manager",
         tags=["technical seo", "google analytics 4", "keyword research", "hubspot", "link building"],
-        **every_field_job_kwargs,
     )
+    assert ProfileScorer().score(saturated, profile).percentage <= 100
 
-    result = KeywordScorer().score(saturated_job, profile)
-
-    assert result.percentage == 100.0
-    assert result.missing_keywords == []
-
-
-def test_score_never_drops_below_zero(profile, no_match_job):
-    stacked_penalty_job = replace(
-        no_match_job,
-        description=no_match_job.description + " Must reside in the United States. Senior director role.",
-    )
-    result = KeywordScorer().score(stacked_penalty_job, profile)
-    assert result.percentage == 0
-    assert len(result.penalties) == 2
+    floored = replace(unrelated_job, title="Director of Engineering")
+    assert ProfileScorer().score(floored, profile).percentage >= 0
 
 
-def test_max_score_is_weighted_title_ceiling(profile):
-    expected = sum(skill.weight for skill in profile.skills) * 3
-    assert profile.max_score == expected
+def test_matched_and_missing_skills_are_reported(profile, seo_job):
+    result = ProfileScorer().score(seo_job, profile)
+    assert "technical seo" in result.matched_keywords
+    assert "keyword research" in result.matched_keywords
+    assert "hubspot" in result.missing_keywords

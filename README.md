@@ -1,9 +1,10 @@
 # Remote Job Board
 
-A zero-cost, serverless job aggregator that scans five free remote-job
-sources daily, scores every listing as an explainable percentage match
-against a candidate profile, and publishes a static dashboard - no backend,
-no database server, no paid APIs.
+A zero-cost, serverless job aggregator that scans six free remote-job
+sources daily, filters out roles the candidate legally can't apply to from
+their own country, scores what's left as an explainable percentage match,
+and publishes a static dashboard - no backend, no database server, no paid
+APIs, no API keys.
 
 **[Live demo](https://rafshantashin.github.io/remote-job-board/)** &middot; built with Python 3.11, SQLite, Jinja2, and GitHub Actions.
 
@@ -16,27 +17,30 @@ no database server, no paid APIs.
 ## Architecture
 
 ```
-        ┌──────────┐   ┌──────────┐   ┌───────────┐   ┌──────────┐   ┌────────┐
-        │ Remotive │   │ RemoteOK │   │ Arbeitnow │   │  Jobicy  │   │  WWR   │
-        │   API    │   │   API    │   │    API    │   │   API    │   │  RSS   │
-        └────┬─────┘   └────┬─────┘   └─────┬─────┘   └────┬─────┘   └───┬────┘
-             └──────────────┴───────┬───────┴──────────────┴─────────────┘
+   ┌─────┐  ┌──────────┐  ┌──────────┐  ┌───────────┐  ┌─────────┐  ┌────────┐
+   │ WWR │  │ RemoteOK │  │ Remotive │  │ Himalayas │  │ Working │  │ Jobicy │
+   │ RSS │  │   API    │  │   API    │  │    API    │  │ Nomads  │  │  API   │
+   └──┬──┘  └────┬─────┘  └────┬─────┘  └─────┬─────┘  └────┬────┘  └───┬────┘
+      └──────────┴─────────────┴────┬─────────┴─────────────┴───────────┘
                                      │  concurrent fetch, per-source
                                      │  timeout + retry (pipeline/fetch.py)
                                      ▼
-                     normalize + dedupe (pipeline/normalize.py)
-                     sha256(company + title + location) as the dedupe key
+                     eligibility (pipeline/eligibility.py)
+                     can this candidate apply from their country at all?
+                     OPEN / UNCONFIRMED kept, BLOCKED dropped
                                      │
                                      ▼
-                     hard filters: must be remote, drop listings that
-                     demand a specific work authorization / residency
+                     dedupe (pipeline/normalize.py)
+                     sha256(company + title), preferring the OPEN copy
+                     of a posting syndicated across several boards
                                      │
                                      ▼
                      score against profile.json (pipeline/score.py)
-                     weighted keyword hits - penalties, normalized to 0-100%
+                     role fit 65 + domain fit 20 + skill overlap 15
+                     - penalties, clamped 0-100
                                      │
                                      ▼
-                     upsert into SQLite, keep >= 50% (pipeline/store.py)
+                     upsert into SQLite (pipeline/store.py)
                      first_seen tracked -> "new in the last 24h"
                                      │
                                      ▼
@@ -49,50 +53,80 @@ no database server, no paid APIs.
 
 Each source in `jobboard/sources/` is an independent adapter returning the
 same normalized shape (`source, external_id, title, company, location, url,
-description, tags, posted_at`). `pipeline/fetch.py` runs all five
+description, tags, posted_at`). `pipeline/fetch.py` runs all six
 concurrently in a thread pool; a failing or slow source is caught, logged,
 and contributes zero listings rather than aborting the run.
 
+Every surviving listing is shown, each with its own match percentage - the
+dashboard's slider does the filtering, rather than the pipeline deciding
+in advance what you're allowed to see.
+
+## Can I actually apply? (eligibility)
+
+Most "remote" listings are remote *within a region*. In one real run, 470
+listings came back and **260 were locked** to the US, EU, UK or LATAM.
+Scoring them would be wasted effort, so `pipeline/eligibility.py` classifies
+every listing before it reaches the scorer:
+
+| Verdict | Meaning | Outcome |
+|---|---|---|
+| `OPEN` | Anywhere/Worldwide/Global/APAC/Asia, or the source confirms it | Shown, green badge |
+| `UNCONFIRMED` | Says only "Remote", no region named | Shown, amber "verify before applying" badge |
+| `BLOCKED` | Names a region that excludes the candidate, or demands local work authorization | Dropped |
+
+Himalayas publishes machine-readable `locationRestrictions` and
+`timezoneRestrictions`, so for that source the verdict is read directly
+rather than inferred from prose. Everything else is classified from its
+location field plus authorization phrases in the body - which is why
+`UNCONFIRMED` exists as its own outcome instead of being guessed either way.
+
 ## Scoring, explained
 
-`profile.json` defines a list of weighted skills (e.g. `technical seo:
-5`), target job titles, a seniority range, and phrase lists for geo/
-authorization filtering. For every skill, `KeywordScorer`
-(`pipeline/score.py`) checks for a whole-word/phrase match in three
-fields, each with its own multiplier:
+The score answers *"is this a job I could apply for?"*, not *"how many of
+my tools does it name"*. A Marketing Specialist posting that never mentions
+GA4 is still a job worth seeing, so `ProfileScorer` (`pipeline/score.py`)
+weights three signals:
 
-| Field       | Multiplier |
-|-------------|-----------:|
-| Title       | &times;3   |
-| Tags        | &times;2   |
-| Description | &times;1   |
+| Signal | Points | What it reads |
+|---|---:|---|
+| **Role fit** | 65 | The job title, matched against the `target_roles` families in `profile.json` (SEO, Digital Marketing, Content Marketing, Growth, Marketing, Content Writing). Each family carries its own weight, so an SEO Specialist role outranks a generalist marketing one. |
+| **Domain fit** | 20 | How strongly the description reads as marketing/SEO work at all, via a domain vocabulary list. Saturates at 8 terms. |
+| **Skill overlap** | 15 | Weighted profile skills found anywhere in the listing. A confidence signal, and the source of the chips on each card. |
 
-A skill can score in more than one field - a title *and* description hit
-both count. The percentage is `raw_score / max_score * 100`, where
-`max_score` is calibrated against every skill appearing in the title (the
-highest-weighted field). A listing that also matches in description/tags
-is rewarded above that baseline, which is why the score is explicitly
-capped at 100 (and floored at 0).
+A title match earns full role credit; the same phrase appearing only in the
+body earns a quarter of it, because a Product Manager JD that mentions the
+marketing team is not a marketing job. And if no role family matches at
+all, the domain and skill points are cut to a quarter - "campaign" and
+"funnel" show up in sales and engineering ads too, so they can't carry a
+listing on their own.
 
-Two penalties subtract from `raw_score`, each as a fraction of
-`max_score` so they stay meaningful regardless of profile size:
+Two penalties then subtract:
 
-- **Geo/authorization phrases** - a hard match (e.g. "must reside in",
-  "US work authorization") gets the listing dropped entirely before
-  scoring; a softer signal (e.g. "must overlap with EST") just reduces the
-  score.
-- **Seniority mismatch** - titles/descriptions implying a more senior
-  role (senior, staff, director, ...), a more junior one (intern,
-  entry-level, ...), or an explicit years-of-experience ask well above the
-  profile's range.
+- **Seniority mismatch** (-25) - leadership titles (director, head of, VP,
+  chief), junior ones (intern, student, trainee), or an explicit ask far
+  above the profile's experience. "Senior" and "Manager" are deliberately
+  *not* penalized; the candidate has 5+ years and applies at both levels.
+- **Timezone/region preference** (-12) - soft signals like "must overlap
+  with EST" that don't disqualify but do make the role a worse fit.
 
-The matched and missing skill names are stored alongside the score so the
-dashboard can render them as chips - the percentage is never a black box.
+The matched role family and the matched/missing skills are all stored
+alongside the score, so each card can show *why* it ranked where it did -
+the percentage is never a black box.
 
-Matching uses word-boundary regex, not plain substring search - an early
+Matching uses word-boundary regex, not plain substring search. An early
 version matched the 3-letter skill "CRO" inside ordinary words like
-"across" and "cross-functional" in nearly every job description, which
-would have quietly inflated every score.
+"across" and "cross-functional", which quietly inflated nearly every score.
+
+### Calibration
+
+The scoring was tuned by replaying it against 300+ real listings captured
+from these sources, not against invented samples. A first version was
+normalized against a ceiling no real posting could reach, so genuine
+matches topped out at 7% while the hand-written demo data scored 95% - the
+sample data had been written to fit the formula instead of the formula
+being validated against reality. The current curve puts real SEO and
+digital-marketing roles at 50-100%, adjacent marketing roles at 30-60%,
+and everything non-marketing below 10%.
 
 ## Demo mode
 
@@ -138,9 +172,10 @@ python jobboard/main.py --db-path /path/to/jobs.db --output-path /path/to/index.
 pytest
 ```
 
-14 tests cover the match-percentage calculation (weighting, penalties,
-capping/flooring, word-boundary matching) and the dedupe/hashing logic,
-using a small fixture profile and sample listings
+28 tests cover role-first scoring (role families, title-vs-body weighting,
+penalties, clamping), country eligibility (including Himalayas' structured
+restrictions and the timezone check), role exclusion, and dedupe/hashing -
+against a small fixture profile and sample listings
 (`jobboard/tests/conftest.py`).
 
 ## Automation
@@ -155,24 +190,31 @@ results should land.
 
 ## Sample output
 
-From a real `--demo` run (see the [live demo](https://rafshantashin.github.io/remote-job-board/) for the interactive version):
+From a real `--demo` run against the bundled fictional listings (see the
+[live demo](https://rafshantashin.github.io/remote-job-board/) for the
+interactive version - real production runs return real company names,
+which is exactly what stays out of this public repo):
 
-| Match | Title | Company | Matched skills |
-|------:|-------|---------|----------------|
-| 94.7% | SEO Specialist - Technical SEO & Keyword Research | Northwind Analytics | technical seo, google analytics 4, google search console, content strategy, on-page seo, keyword research, b2b saas, link building, internal linking |
-| 65.9% | SEO Manager - B2B SaaS | Fernwood Digital | technical seo, content strategy, on-page seo, keyword research, hubspot, b2b saas, link building, internal linking |
-| 53.0% | Digital Marketing Specialist | Brightloop | content strategy, on-page seo, keyword research, hubspot, google ads, b2b saas, link building, internal linking |
-| 52.3% | Content Marketing Manager | Lumen Stack | content strategy, on-page seo, keyword research, hubspot, b2b saas, link building, internal linking |
+| Match | Matched as | Title | Company | Eligibility |
+|------:|------------|-------|---------|-------------|
+| 100% | SEO | SEO Specialist | Northwind Analytics | open |
+| 87% | Content Marketing | Content Marketing Manager | Lumen Stack | open |
+| 84% | Digital Marketing | Digital Marketing Manager | Fernwood Digital | open |
+| 72% | Growth Marketing | Growth Marketer | Cascade Metrics | unconfirmed |
+| 62% | Marketing | Marketing Specialist | Brightloop | unconfirmed |
 
-8 sample listings scanned, 4 matches at or above the 50% threshold,
-66.5% average match, 3 flagged "new" in the last 24 hours.
+That run scanned **470 listings**: engineering and internship titles were
+dropped outright, **260 were region-locked** and dropped, leaving ~190
+the candidate can actually apply to - of which 7 scored above 50%. A short
+list is the expected outcome, and the point: 7 real options beats scrolling
+470 dead ends.
 
 ## Project structure
 
 ```
 jobboard/
   sources/     one adapter per job source + base.py (shared HTTP/retry helpers)
-  pipeline/    fetch.py, normalize.py, score.py, store.py
+  pipeline/    fetch.py, eligibility.py, normalize.py, score.py, store.py
   render/      template.html.j2, build.py
   fixtures/    sample_jobs.py (demo-only data)
   tests/       pytest suite
@@ -183,7 +225,8 @@ jobboard/
 ## Extending the scorer
 
 `pipeline/score.py` selects its scorer through `get_scorer()`, which reads
-a `USE_LLM` environment variable. Only the deterministic `KeywordScorer`
+a `USE_LLM` environment variable. Only the deterministic `ProfileScorer`
 is implemented; `USE_LLM=true` resolves to a placeholder `LLMScorer` that
-raises `NotImplementedError`. The seam exists so an LLM-backed scorer
-could be dropped in later - implementing one is out of scope for v1.
+raises `NotImplementedError`. The seam exists so an LLM-backed scorer -
+which would read a full job description rather than matching titles and
+keywords - could be dropped in later without touching any caller.

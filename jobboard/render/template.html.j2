@@ -259,6 +259,36 @@
     color: var(--chip-missing-text);
   }
 
+  .role-line {
+    font-size: 0.8rem;
+    color: var(--text-muted);
+  }
+
+  .role-line strong {
+    color: var(--text);
+    font-weight: 600;
+  }
+
+  .eligibility {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    font-size: 0.75rem;
+    padding: 0.25rem 0.55rem;
+    border-radius: 6px;
+    width: fit-content;
+  }
+
+  .eligibility.open {
+    background: color-mix(in srgb, var(--green) 14%, transparent);
+    color: var(--green);
+  }
+
+  .eligibility.unconfirmed {
+    background: color-mix(in srgb, var(--amber) 16%, transparent);
+    color: var(--amber);
+  }
+
   .card-actions {
     display: flex;
     align-items: center;
@@ -339,15 +369,19 @@
         </div>
         <div class="stat">
           <span class="stat-value">{{ match_count }}</span>
-          <span class="stat-label">Matches</span>
+          <span class="stat-label">You can apply to</span>
+        </div>
+        <div class="stat">
+          <span class="stat-value">{{ strong_count }}</span>
+          <span class="stat-label">Strong fit (50%+)</span>
+        </div>
+        <div class="stat">
+          <span class="stat-value">{{ open_count }}</span>
+          <span class="stat-label">Location confirmed</span>
         </div>
         <div class="stat">
           <span class="stat-value">{{ new_count }}</span>
           <span class="stat-label">New today</span>
-        </div>
-        <div class="stat">
-          <span class="stat-value">{{ avg_match }}%</span>
-          <span class="stat-label">Avg match</span>
         </div>
       </div>
     </div>
@@ -357,8 +391,8 @@
     <div class="wrap">
       <div class="filters">
         <label>
-          Min match <span id="min-match-value">50%</span>
-          <input type="range" id="min-match" min="0" max="100" step="5" value="50">
+          Min match <span id="min-match-value">0%</span>
+          <input type="range" id="min-match" min="0" max="100" step="5" value="0">
         </label>
         <label>
           Source
@@ -370,6 +404,10 @@
         <label>
           <input type="checkbox" id="new-only">
           New only
+        </label>
+        <label>
+          <input type="checkbox" id="eligible-only">
+          Confirmed open to me only
         </label>
       </div>
 
@@ -490,10 +528,33 @@
       }
       article.appendChild(meta);
 
+      if (job.eligibility === "open" || job.eligibility === "unconfirmed") {
+        var elig = document.createElement("span");
+        elig.className = "eligibility " + job.eligibility;
+        elig.textContent = job.eligibility === "open"
+          ? "Open to your location"
+          : "Location unconfirmed — verify before applying";
+        if (job.eligibility_reason) elig.title = job.eligibility_reason;
+        article.appendChild(elig);
+      }
+
+      var roleLine = document.createElement("p");
+      roleLine.className = "role-line";
+      if (job.role_match) {
+        roleLine.innerHTML = "";
+        roleLine.appendChild(document.createTextNode("Matched as "));
+        var strong = document.createElement("strong");
+        strong.textContent = job.role_match;
+        roleLine.appendChild(strong);
+      } else {
+        roleLine.textContent = "No target role matched";
+      }
+      article.appendChild(roleLine);
+
       var chips = document.createElement("div");
       chips.className = "chips";
-      job.matched_keywords.forEach(function (k) { chips.appendChild(createChip(k, true)); });
-      job.missing_keywords.forEach(function (k) { chips.appendChild(createChip(k, false)); });
+      job.matched_keywords.slice(0, 10).forEach(function (k) { chips.appendChild(createChip(k, true)); });
+      job.missing_keywords.slice(0, 6).forEach(function (k) { chips.appendChild(createChip(k, false)); });
       article.appendChild(chips);
 
       var actions = document.createElement("div");
@@ -533,7 +594,8 @@
       return {
         minMatch: Number(document.getElementById("min-match").value),
         source: document.getElementById("source-filter").value,
-        newOnly: document.getElementById("new-only").checked
+        newOnly: document.getElementById("new-only").checked,
+        eligibleOnly: document.getElementById("eligible-only").checked
       };
     }
 
@@ -546,6 +608,7 @@
         if (job.match_score < filters.minMatch) return false;
         if (filters.source !== "all" && job.source !== filters.source) return false;
         if (filters.newOnly && !job.is_new) return false;
+        if (filters.eligibleOnly && job.eligibility !== "open") return false;
         return true;
       });
 
@@ -559,6 +622,7 @@
     });
     document.getElementById("source-filter").addEventListener("change", renderCards);
     document.getElementById("new-only").addEventListener("change", renderCards);
+    document.getElementById("eligible-only").addEventListener("change", renderCards);
 
     renderCards();
   })();

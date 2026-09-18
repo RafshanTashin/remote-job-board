@@ -1,31 +1,181 @@
 {
-  "target_titles": [
-    "SEO Specialist",
-    "SEO Manager",
-    "Digital Marketing Specialist",
-    "Growth Marketer",
-    "Content Marketing Manager",
-    "Marketing Analyst"
+  "_comment": "Built from the candidate's resume. target_roles drives the score; skills are a confidence bonus and power the explainability chips.",
+
+  "target_roles": [
+    {
+      "family": "SEO",
+      "weight": 1.0,
+      "patterns": [
+        "seo specialist", "seo manager", "seo consultant", "seo executive",
+        "seo strategist", "seo analyst", "seo lead", "technical seo",
+        "organic growth", "organic search", "search engine optimization",
+        "search engine optimisation"
+      ]
+    },
+    {
+      "family": "Digital Marketing",
+      "weight": 0.95,
+      "patterns": [
+        "digital marketing specialist", "digital marketing manager",
+        "digital marketing executive", "digital marketing analyst",
+        "digital marketing associate", "digital marketer", "digital marketing",
+        "performance marketing", "search marketing"
+      ]
+    },
+    {
+      "family": "Content Marketing",
+      "weight": 0.9,
+      "patterns": [
+        "content marketing manager", "content marketing specialist",
+        "content marketing", "content strategist", "content strategy",
+        "content marketer", "content lead", "content manager"
+      ]
+    },
+    {
+      "family": "Growth Marketing",
+      "weight": 0.85,
+      "patterns": [
+        "growth marketer", "growth marketing", "growth manager",
+        "demand generation", "demand gen", "growth lead", "growth specialist",
+        "growth strategist", "growth associate"
+      ]
+    },
+    {
+      "family": "Marketing",
+      "weight": 0.8,
+      "patterns": [
+        "marketing specialist", "marketing manager", "marketing executive",
+        "marketing analyst", "marketing associate", "marketing coordinator",
+        "marketing generalist", "brand marketing", "product marketing",
+        "inbound marketing", "marketing operations"
+      ]
+    },
+    {
+      "family": "Content Writing",
+      "weight": 0.6,
+      "patterns": [
+        "content writer", "copywriter", "seo writer", "technical writer",
+        "content editor", "editorial manager"
+      ]
+    }
   ],
+
+  "domain_terms": [
+    "seo", "search engine", "organic traffic", "organic search", "keyword",
+    "keywords", "serp", "backlink", "backlinks", "link building", "content strategy",
+    "content calendar", "editorial", "blog", "campaign", "campaigns",
+    "google analytics", "google ads", "ppc", "paid search", "paid media",
+    "demand generation", "lead generation", "conversion", "funnel",
+    "click-through", "impressions", "landing page", "copywriting",
+    "email marketing", "newsletter", "social media", "brand awareness",
+    "marketing automation", "hubspot", "semrush", "ahrefs", "tag manager",
+    "on-page", "off-page", "schema", "meta description", "crawl", "indexation",
+    "sitemap", "growth", "acquisition", "retention", "b2b", "saas",
+    "content marketing", "inbound", "search console", "ga4", "audience",
+    "positioning", "go-to-market", "webinar", "thought leadership"
+  ],
+
   "skills": [
     { "name": "technical seo", "weight": 5 },
-    { "name": "google analytics 4", "weight": 4 },
-    { "name": "google search console", "weight": 4 },
-    { "name": "content strategy", "weight": 4 },
     { "name": "on-page seo", "weight": 4 },
+    { "name": "off-page seo", "weight": 3 },
+    { "name": "site audit", "weight": 3 },
+    { "name": "entity seo", "weight": 3 },
+    { "name": "semantic seo", "weight": 3 },
+    { "name": "schema markup", "weight": 3 },
+    { "name": "core web vitals", "weight": 3 },
+    { "name": "site migration", "weight": 3 },
+
+    { "name": "generative engine optimization", "weight": 4 },
+    { "name": "ai search", "weight": 4 },
+    { "name": "ai overviews", "weight": 3 },
+    { "name": "llms.txt", "weight": 3 },
+
     { "name": "keyword research", "weight": 4 },
-    { "name": "hubspot", "weight": 3 },
-    { "name": "google ads", "weight": 3 },
-    { "name": "b2b saas", "weight": 4 },
+    { "name": "search intent", "weight": 3 },
+    { "name": "competitor analysis", "weight": 3 },
+    { "name": "content gap", "weight": 3 },
+    { "name": "content strategy", "weight": 4 },
+    { "name": "backlink analysis", "weight": 3 },
     { "name": "link building", "weight": 3 },
     { "name": "internal linking", "weight": 3 },
-    { "name": "cro", "weight": 3 }
+
+    { "name": "seo content writing", "weight": 4 },
+    { "name": "technical writing", "weight": 3 },
+    { "name": "landing page", "weight": 3 },
+    { "name": "editorial calendar", "weight": 3 },
+
+    { "name": "google analytics 4", "weight": 4 },
+    { "name": "ga4", "weight": 4 },
+    { "name": "google tag manager", "weight": 3 },
+    { "name": "gtm", "weight": 3 },
+    { "name": "google search console", "weight": 4 },
+    { "name": "semrush", "weight": 4 },
+    { "name": "ahrefs", "weight": 4 },
+
+    { "name": "b2b content marketing", "weight": 4 },
+    { "name": "demand generation", "weight": 3 },
+    { "name": "lead generation", "weight": 3 },
+    { "name": "google ads", "weight": 3 },
+    { "name": "paid search", "weight": 3 },
+    { "name": "email marketing", "weight": 3 },
+    { "name": "social media", "weight": 2 },
+    { "name": "conversion rate optimization", "weight": 3 },
+    { "name": "cro", "weight": 3 },
+
+    { "name": "b2b saas", "weight": 4 },
+    { "name": "wordpress", "weight": 2 },
+    { "name": "hubspot", "weight": 2 },
+    { "name": "canva", "weight": 1 }
   ],
+
+  "skill_target_weight": 26,
+
+  "_excluded_title_terms_comment": "Titles dropped outright, never scored or shown: internships and software-engineering roles.",
+  "excluded_title_terms": [
+    "intern", "internship", "student", "trainee", "apprentice",
+    "software engineer", "engineer", "engineering", "developer", "devel",
+    "frontend", "front end", "backend", "back end", "full stack", "fullstack",
+    "devops", "sre", "site reliability", "programmer", "architect",
+    "data scientist", "machine learning", "ios", "android", "qa ",
+    "web developer", "software development"
+  ],
+
   "seniority": {
-    "level": "mid",
-    "min_years": 2,
-    "max_years": 4
+    "years_experience": 5,
+    "reject_terms": [
+      "director", "vice president", "vp of", "head of", "chief", "cmo",
+      "chief marketing officer", "founding", "c-level", "svp", "evp",
+      "entry level", "graduate scheme"
+    ],
+    "reject_years_above": 10
   },
+
+  "eligibility": {
+    "country": "Bangladesh",
+    "timezone_offset": 6,
+    "open_location_terms": [
+      "anywhere", "worldwide", "global", "globally", "remote - worldwide",
+      "apac", "asia", "asia pacific", "asia-pacific", "south asia",
+      "bangladesh", "international", "internationally", "any location",
+      "location independent", "no location restriction"
+    ],
+    "blocked_location_terms": [
+      "usa", "u.s.", "u.s.a", "united states", "us only", "us-only",
+      "canada", "uk", "united kingdom", "england", "britain",
+      "europe", "european union", "eu only", "emea", "eea",
+      "latam", "latin america", "south america", "americas", "north america",
+      "germany", "poland", "france", "spain", "portugal", "italy",
+      "netherlands", "belgium", "austria", "croatia", "hungary", "ireland",
+      "brazil", "mexico", "argentina", "colombia", "chile", "peru",
+      "australia", "new zealand", "israel", "south africa", "nigeria", "kenya",
+      "india", "pakistan", "philippines", "indonesia", "vietnam", "japan",
+      "singapore", "hong kong", "china", "korea", "taiwan", "thailand",
+      "uae", "dubai", "saudi", "qatar", "turkey", "egypt",
+      "norway", "sweden", "denmark", "finland", "switzerland"
+    ]
+  },
+
   "geo_hard_exclude_phrases": [
     "must reside in",
     "must be located in",
@@ -36,13 +186,12 @@
     "u.s. work authorization",
     "united states work authorization",
     "eu work authorization",
-    "european union work authorization",
     "uk work authorization",
-    "united kingdom work authorization",
     "authorized to work in the united states",
     "authorized to work in the uk",
     "authorized to work in the eu",
     "must be authorized to work in",
+    "must be legally authorized to work",
     "us citizens only",
     "u.s. citizens only",
     "eu citizens only",
@@ -52,9 +201,11 @@
     "sponsorship is not available",
     "we do not sponsor",
     "must be a us citizen",
-    "must be a uk citizen",
-    "must be eligible to work in"
+    "must be eligible to work in",
+    "green card",
+    "security clearance"
   ],
+
   "geo_soft_penalty_phrases": [
     "overlap with est",
     "overlap with pst",
@@ -63,30 +214,8 @@
     "us timezone",
     "eu timezone",
     "uk timezone",
-    "within the united states",
-    "within the uk",
-    "within the eu",
-    "us-based",
-    "uk-based",
-    "eu-based"
-  ],
-  "seniority_overqualified_terms": [
-    "senior",
-    "sr",
-    "staff",
-    "principal",
-    "director",
-    "head of",
-    "vice president",
-    "chief marketing officer",
-    "cmo"
-  ],
-  "seniority_underqualified_terms": [
-    "internship",
-    "intern",
-    "entry level",
-    "entry-level",
-    "junior",
-    "jr"
+    "cet",
+    "pacific time",
+    "eastern time"
   ]
 }

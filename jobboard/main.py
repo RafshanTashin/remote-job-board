@@ -21,8 +21,9 @@ import logging
 from datetime import datetime, timedelta, timezone
 
 from jobboard.fixtures.sample_jobs import SAMPLE_JOBS
+from jobboard.pipeline.eligibility import filter_eligible
 from jobboard.pipeline.fetch import fetch_all
-from jobboard.pipeline.normalize import apply_hard_filters, dedupe
+from jobboard.pipeline.normalize import dedupe_scored, drop_excluded_roles
 from jobboard.pipeline.score import Profile, get_scorer
 from jobboard.pipeline.store import init_db, query_matches, upsert_job
 from jobboard.render.build import build_dashboard
@@ -32,7 +33,10 @@ REPO_ROOT = PACKAGE_ROOT.parent
 PROFILE_PATH = PACKAGE_ROOT / "profile.json"
 DB_PATH = REPO_ROOT / "jobs.db"
 OUTPUT_PATH = REPO_ROOT / "index.html"
-MIN_MATCH_SCORE = 50.0
+
+# Every listing that survives the eligibility filter is shown with its own
+# match percentage beside it; the dashboard's slider does the filtering.
+MIN_MATCH_SCORE = 0.0
 
 logger = logging.getLogger("jobboard")
 
@@ -65,10 +69,8 @@ def run(
 
     if demo:
         jobs_scanned = len(SAMPLE_JOBS)
-        deduped = dedupe([job for job, _ in SAMPLE_JOBS])
-        filtered = apply_hard_filters(deduped, profile.geo_hard_exclude_phrases)
+        collected = [job for job, _ in SAMPLE_JOBS]
         first_seen_by_id = {job.external_id: started - timedelta(hours=hours_ago) for job, hours_ago in SAMPLE_JOBS}
-        scored = [(job, scorer.score(job, profile)) for job in filtered]
     else:
         all_jobs, reports = fetch_all()
         jobs_scanned = len(all_jobs)
@@ -82,33 +84,45 @@ def run(
                 report.duration_seconds,
                 f" error={report.error}" if report.error else "",
             )
-        deduped = dedupe(all_jobs)
-        filtered = apply_hard_filters(deduped, profile.geo_hard_exclude_phrases)
+        collected = all_jobs
         first_seen_by_id = None
-        scored = [(job, scorer.score(job, profile)) for job in filtered]
+
+    in_scope = drop_excluded_roles(collected, profile.excluded_title_terms)
+
+    eligible = filter_eligible(
+        in_scope,
+        country=profile.eligibility.get("country", ""),
+        timezone_offset=int(profile.eligibility.get("timezone_offset", 0)),
+        open_terms=profile.eligibility.get("open_location_terms", []),
+        blocked_terms=profile.eligibility.get("blocked_location_terms", []),
+        hard_exclude_phrases=profile.geo_hard_exclude_phrases,
+    )
+    deduped = dedupe_scored(eligible)
+    scored = [(job, scorer.score(job, profile), verdict) for job, verdict in deduped]
+    scored.sort(key=lambda triple: triple[1].percentage, reverse=True)
 
     if dry_run:
-        matches = sorted(
-            (pair for pair in scored if pair[1].percentage >= MIN_MATCH_SCORE),
-            key=lambda pair: pair[1].percentage,
-            reverse=True,
-        )
         logger.info(
-            "[dry-run] scanned=%d after-filters=%d matches>=%.0f%%=%d",
+            "[dry-run] scanned=%d eligible=%d (showing all, sorted by match)",
             jobs_scanned,
-            len(filtered),
-            MIN_MATCH_SCORE,
-            len(matches),
+            len(scored),
         )
-        for job, result in matches[:20]:
-            logger.info("  %5.1f%%  %-45s  %s", result.percentage, job.title[:45], job.company)
-        return len(matches)
+        for job, result, verdict in scored[:25]:
+            logger.info(
+                "  %5.1f%%  %-14s %-42s  %-22s [%s]",
+                result.percentage,
+                result.role_match or "-",
+                job.title[:42],
+                job.company[:22],
+                verdict.status.value,
+            )
+        return len(scored)
 
     conn = init_db(":memory:" if demo else db_path)
     try:
-        for job, result in scored:
+        for job, result, verdict in scored:
             seen_at = first_seen_by_id[job.external_id] if first_seen_by_id else started
-            upsert_job(conn, job, result, seen_at)
+            upsert_job(conn, job, result, seen_at, verdict.status.value, verdict.reason)
         conn.commit()
         current_matches = query_matches(conn, MIN_MATCH_SCORE, started)
     finally:

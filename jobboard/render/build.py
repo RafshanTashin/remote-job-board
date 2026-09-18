@@ -39,7 +39,9 @@ def build_dashboard(
 
     match_count = len(jobs)
     new_count = sum(1 for job in jobs if job.is_new)
-    avg_match = round(sum(job.match_score for job in jobs) / match_count, 1) if match_count else 0.0
+    open_count = sum(1 for job in jobs if job.eligibility == "open")
+    strong = [job for job in jobs if job.match_score >= 50]
+    avg_match = round(sum(j.match_score for j in strong) / len(strong), 1) if strong else 0.0
     sources = sorted({job.source for job in jobs})
 
     jobs_json = _safe_json_for_html([asdict(job) for job in jobs])
@@ -49,6 +51,8 @@ def build_dashboard(
         jobs_scanned=jobs_scanned,
         match_count=match_count,
         new_count=new_count,
+        open_count=open_count,
+        strong_count=len(strong),
         avg_match=avg_match,
         sources=sources,
         jobs_json=jobs_json,

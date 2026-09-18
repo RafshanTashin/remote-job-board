@@ -1,17 +1,37 @@
-"""Shared fixtures: a compact profile and sample normalized job listings."""
+"""Shared fixtures: a compact profile and sample normalized listings."""
 
 from __future__ import annotations
 
 import pytest
 
-from jobboard.pipeline.score import Profile, Skill
+from jobboard.pipeline.score import Profile, Skill, TargetRole
 from jobboard.sources.base import NormalizedJob
 
 
 @pytest.fixture
 def profile() -> Profile:
     return Profile(
-        target_titles=["SEO Specialist", "SEO Manager"],
+        target_roles=[
+            TargetRole(
+                family="SEO",
+                weight=1.0,
+                patterns=["seo specialist", "seo manager", "technical seo", "organic growth"],
+            ),
+            TargetRole(
+                family="Digital Marketing",
+                weight=0.95,
+                patterns=["digital marketing specialist", "digital marketing manager", "digital marketing"],
+            ),
+            TargetRole(
+                family="Marketing",
+                weight=0.8,
+                patterns=["marketing specialist", "marketing manager", "marketing executive"],
+            ),
+        ],
+        domain_terms=[
+            "seo", "keyword", "organic traffic", "content strategy", "campaign",
+            "google analytics", "backlink", "landing page", "b2b", "funnel",
+        ],
         skills=[
             Skill(name="technical seo", weight=5),
             Skill(name="google analytics 4", weight=4),
@@ -19,73 +39,87 @@ def profile() -> Profile:
             Skill(name="hubspot", weight=3),
             Skill(name="link building", weight=3),
         ],
-        min_years=2,
-        max_years=4,
-        geo_hard_exclude_phrases=["must reside in", "us work authorization"],
+        skill_target_weight=12,
+        years_experience=5,
+        seniority_reject_terms=["director", "head of", "intern", "student"],
+        reject_years_above=10,
         geo_soft_penalty_phrases=["us timezone"],
-        seniority_overqualified_terms=["senior", "staff", "director"],
-        seniority_underqualified_terms=["intern", "entry level"],
+        geo_hard_exclude_phrases=["must reside in", "us work authorization"],
+        excluded_title_terms=["intern", "engineer", "developer", "frontend", "backend"],
+        eligibility={
+            "country": "Bangladesh",
+            "timezone_offset": 6,
+            "open_location_terms": ["anywhere", "worldwide", "global", "apac", "asia"],
+            "blocked_location_terms": ["usa", "united states", "canada", "uk", "europe", "latam"],
+        },
     )
 
 
 @pytest.fixture
-def perfect_match_job() -> NormalizedJob:
+def seo_job() -> NormalizedJob:
+    """An exact target role, in the title, with domain language in the body."""
     return NormalizedJob(
-        source="remotive",
+        source="weworkremotely",
         external_id="1",
-        title="Technical SEO & Keyword Research Specialist",
+        title="SEO Specialist",
         company="Acme SaaS",
-        location="Remote - Worldwide",
+        location="Worldwide",
         url="https://example.com/jobs/1",
         description=(
-            "We need someone strong in technical seo, google analytics 4, "
-            "and keyword research to grow our B2B SaaS blog."
+            "Own technical seo and keyword research for our b2b product. You'll "
+            "grow organic traffic, run campaign reporting in google analytics, and "
+            "improve landing page performance alongside our content strategy lead."
         ),
-        tags=["hubspot", "link building"],
+        tags=["seo", "marketing"],
         posted_at="2026-09-17T00:00:00Z",
     )
 
 
 @pytest.fixture
-def no_match_job() -> NormalizedJob:
+def adjacent_marketing_job() -> NormalizedJob:
+    """A marketing role that isn't SEO - applicable, but a weaker fit."""
     return NormalizedJob(
         source="remoteok",
         external_id="2",
-        title="Backend Engineer",
+        title="Marketing Manager",
         company="Widgets Inc",
-        location="Remote",
+        location="Anywhere",
         url="https://example.com/jobs/2",
-        description="Build backend services in Go and Kubernetes.",
+        description="Run our brand campaign calendar and trade show programme for a b2b audience.",
+        tags=["marketing"],
+        posted_at="2026-09-17T00:00:00Z",
+    )
+
+
+@pytest.fixture
+def unrelated_job() -> NormalizedJob:
+    """Not a marketing role at all - mentions 'campaign' and 'funnel' anyway."""
+    return NormalizedJob(
+        source="remoteok",
+        external_id="3",
+        title="Backend Engineer",
+        company="Ironclad Systems",
+        location="Anywhere",
+        url="https://example.com/jobs/3",
+        description=(
+            "Build Go services and Kubernetes tooling. You'll support the sales "
+            "funnel instrumentation and campaign data pipeline."
+        ),
         tags=["golang", "kubernetes"],
         posted_at="2026-09-17T00:00:00Z",
     )
 
 
 @pytest.fixture
-def geo_excluded_job() -> NormalizedJob:
+def us_only_job() -> NormalizedJob:
     return NormalizedJob(
         source="jobicy",
-        external_id="3",
+        external_id="4",
         title="SEO Specialist",
         company="Acme SaaS",
-        location="Remote (US)",
-        url="https://example.com/jobs/3",
-        description="Strong technical seo and keyword research skills. Must reside in the United States.",
-        tags=[],
-        posted_at="2026-09-17T00:00:00Z",
-    )
-
-
-@pytest.fixture
-def senior_mismatch_job() -> NormalizedJob:
-    return NormalizedJob(
-        source="arbeitnow",
-        external_id="4",
-        title="Senior SEO Manager",
-        company="Acme SaaS",
-        location="Remote",
+        location="USA",
         url="https://example.com/jobs/4",
-        description="Lead our technical seo and keyword research strategy.",
+        description="Own technical seo and keyword research.",
         tags=[],
         posted_at="2026-09-17T00:00:00Z",
     )

@@ -14,7 +14,10 @@ from jobboard.sources.base import NormalizedJob, SourceAdapter, fetch_url, strip
 
 logger = logging.getLogger(__name__)
 
-FEED_URL = "https://weworkremotely.com/categories/remote-marketing-jobs.rss"
+# The per-category feeds (…/categories/remote-marketing-jobs.rss) now answer
+# 301 with an empty body, which silently yielded zero listings. The all-jobs
+# feed still works; relevance is decided by scoring anyway.
+FEED_URL = "https://weworkremotely.com/remote-jobs.rss"
 
 
 def _split_title(raw_title: str) -> tuple[str, str]:

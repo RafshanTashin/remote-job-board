@@ -23,10 +23,36 @@ def normalize_location(location: str) -> str:
     return cleaned or "remote"
 
 
-def compute_hash(company: str, title: str, location: str) -> str:
-    """Stable dedupe key: sha256 of lowercased company + title + normalized location."""
-    key = f"{company.strip().lower()}|{title.strip().lower()}|{normalize_location(location)}"
+def compute_hash(company: str, title: str, location: str = "") -> str:
+    """Stable dedupe key: sha256 of lowercased company + title.
+
+    Location is accepted but deliberately not hashed. The same posting is
+    routinely syndicated across boards with different location wording
+    ("Global" on one, "Remote" on another); including it produced duplicate
+    cards for a single job.
+    """
+    key = f"{company.strip().lower()}|{title.strip().lower()}"
     return hashlib.sha256(key.encode("utf-8")).hexdigest()
+
+
+def drop_excluded_roles(jobs: list[NormalizedJob], excluded_title_terms: list[str]) -> list[NormalizedJob]:
+    """Remove whole categories of role the candidate never applies to.
+
+    Engineering and internship postings scored low anyway, but they were
+    still taking up space on the dashboard. Matching is on the title only -
+    a marketing role that merely mentions working with engineers stays.
+    """
+    kept: list[NormalizedJob] = []
+    dropped = 0
+    for job in jobs:
+        title = _WHITESPACE_RE.sub(" ", job.title.lower()).replace("-", " ")
+        if any(re.search(r"\b" + re.escape(term.strip()), title) for term in excluded_title_terms):
+            dropped += 1
+            continue
+        kept.append(job)
+    if dropped:
+        logger.info("dropped %d listing(s) in excluded role categories", dropped)
+    return kept
 
 
 def dedupe(jobs: list[NormalizedJob]) -> list[NormalizedJob]:
@@ -34,7 +60,7 @@ def dedupe(jobs: list[NormalizedJob]) -> list[NormalizedJob]:
     seen: dict[str, NormalizedJob] = {}
     collisions = 0
     for job in jobs:
-        key = compute_hash(job.company, job.title, job.location)
+        key = compute_hash(job.company, job.title)
         if key in seen:
             collisions += 1
             continue
@@ -44,32 +70,25 @@ def dedupe(jobs: list[NormalizedJob]) -> list[NormalizedJob]:
     return list(seen.values())
 
 
-def find_hard_exclude_phrase(job: NormalizedJob, phrases: list[str]) -> str | None:
-    """Return the first hard-exclude phrase found in the job's text, or None."""
-    haystack = f"{job.title}\n{job.description}\n{job.location}".lower()
-    for phrase in phrases:
-        if phrase in haystack:
-            return phrase
-    return None
+def dedupe_scored(pairs: list[tuple]) -> list[tuple]:
+    """Collapse duplicate (job, verdict) pairs, keeping the best-eligibility copy.
 
-
-def apply_hard_filters(jobs: list[NormalizedJob], geo_hard_exclude_phrases: list[str]) -> list[NormalizedJob]:
-    """Drop jobs that fail the must-be-remote / no-authorization-restriction hard filters.
-
-    Adapters that mix remote and on-site listings (Arbeitnow) already filter
-    to remote-only at the source; this stage additionally drops anything
-    that explicitly demands a specific work authorization or residency,
-    regardless of source.
+    When a syndicated posting appears once as OPEN and once as UNCONFIRMED,
+    the confirmed copy is the useful one to show.
     """
-    kept: list[NormalizedJob] = []
-    dropped = 0
-    for job in jobs:
-        hit = find_hard_exclude_phrase(job, geo_hard_exclude_phrases)
-        if hit:
-            logger.debug("hard-filtered title=%r company=%r phrase=%r", job.title, job.company, hit)
-            dropped += 1
+    best: dict[str, tuple] = {}
+    collisions = 0
+    for job, verdict in pairs:
+        key = compute_hash(job.company, job.title)
+        existing = best.get(key)
+        if existing is None:
+            best[key] = (job, verdict)
             continue
-        kept.append(job)
-    if dropped:
-        logger.info("hard filters dropped %d listing(s)", dropped)
-    return kept
+        collisions += 1
+        if verdict.status.value == "open" and existing[1].status.value != "open":
+            best[key] = (job, verdict)
+    if collisions:
+        logger.info("dedupe collapsed %d duplicate listing(s)", collisions)
+    return list(best.values())
+
+

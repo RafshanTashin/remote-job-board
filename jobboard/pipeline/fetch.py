@@ -7,21 +7,23 @@ import time
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from dataclasses import dataclass
 
-from jobboard.sources.arbeitnow import ArbeitnowSource
 from jobboard.sources.base import NormalizedJob, SourceAdapter
+from jobboard.sources.himalayas import HimalayasSource
 from jobboard.sources.jobicy import JobicySource
 from jobboard.sources.remoteok import RemoteOKSource
 from jobboard.sources.remotive import RemotiveSource
 from jobboard.sources.weworkremotely import WeWorkRemotelySource
+from jobboard.sources.workingnomads import WorkingNomadsSource
 
 logger = logging.getLogger(__name__)
 
 ALL_SOURCES: list[SourceAdapter] = [
-    RemotiveSource(),
-    RemoteOKSource(),
-    ArbeitnowSource(),
-    JobicySource(),
     WeWorkRemotelySource(),
+    RemoteOKSource(),
+    RemotiveSource(),
+    HimalayasSource(),
+    WorkingNomadsSource(),
+    JobicySource(),
 ]
 
 
