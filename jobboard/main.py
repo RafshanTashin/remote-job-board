@@ -68,12 +68,10 @@ def run(
     scorer = get_scorer()
 
     if demo:
-        jobs_scanned = len(SAMPLE_JOBS)
         collected = [job for job, _ in SAMPLE_JOBS]
         first_seen_by_id = {job.external_id: started - timedelta(hours=hours_ago) for job, hours_ago in SAMPLE_JOBS}
     else:
         all_jobs, reports = fetch_all()
-        jobs_scanned = len(all_jobs)
         for report in reports:
             status = "failed" if report.error else "ok"
             logger.info(
@@ -103,11 +101,7 @@ def run(
     scored.sort(key=lambda triple: triple[1].percentage, reverse=True)
 
     if dry_run:
-        logger.info(
-            "[dry-run] scanned=%d eligible=%d (showing all, sorted by match)",
-            jobs_scanned,
-            len(scored),
-        )
+        logger.info("[dry-run] %d listing(s) open to you, sorted by match", len(scored))
         for job, result, verdict in scored[:25]:
             logger.info(
                 "  %5.1f%%  %-14s %-42s  %-22s [%s]",
@@ -131,7 +125,6 @@ def run(
 
     build_dashboard(
         current_matches,
-        jobs_scanned=jobs_scanned,
         generated_at=started,
         output_path=output_path,
         is_demo=demo,

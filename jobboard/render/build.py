@@ -28,12 +28,16 @@ def _safe_json_for_html(payload: object) -> str:
 def build_dashboard(
     jobs: list[StoredJob],
     *,
-    jobs_scanned: int,
     generated_at: datetime,
     output_path: str | Path,
     is_demo: bool = False,
 ) -> None:
-    """Render index.html from the current match set and this run's pipeline stats."""
+    """Render index.html from the listings the candidate can actually apply to.
+
+    Counts of what was filtered out (region-locked, closed, out-of-scope
+    roles) stay in the run logs; surfacing them here would just be a tally
+    of jobs that aren't available to this candidate.
+    """
     env = Environment(loader=FileSystemLoader(str(TEMPLATE_DIR)), autoescape=True)
     template = env.get_template(TEMPLATE_NAME)
 
@@ -48,7 +52,6 @@ def build_dashboard(
 
     html = template.render(
         generated_at=generated_at.strftime("%Y-%m-%d %H:%M UTC"),
-        jobs_scanned=jobs_scanned,
         match_count=match_count,
         new_count=new_count,
         open_count=open_count,
